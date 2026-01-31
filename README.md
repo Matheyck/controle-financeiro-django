@@ -13,6 +13,18 @@ Aplicação web em Django para controle financeiro pessoal: cadastro de categori
 
 Os cálculos são feitos no serviço `financeiro_service` (saldo total, saldo mensal e saldo por categoria) e reutilizam um `TransacaoQuerySet` customizado no app `core` para agregações.
 
+### Regras de validação (Transação)
+
+- **Valor**: sempre positivo (constraint no banco `valor_positivo`: `valor > 0`).
+- **Tipo**: apenas `'E'` (Entrada) ou `'S'` (Saída) (constraint no banco `tipo_valido`).
+- **Tipo vs categoria**: o tipo da transação deve ser igual ao tipo da categoria (validado em `clean()`).
+- **Data**: não pode ser futura (validado em `clean()`).
+- O método `save()` chama `full_clean()` para garantir que essas regras sejam aplicadas ao salvar (incluindo pelo admin).
+
+### Migrações
+
+A migração `0002` adiciona as constraints `valor_positivo` e `tipo_valido`. Antes de criá-las, um passo de dados (`corrigir_dados_invalidos`) ajusta registros já existentes: transações com valor ≤ 0 têm o valor corrigido; transações com tipo fora de `['E','S']` passam a ter tipo `'E'`, para que a migração não falhe por dados antigos.
+
 ## Tecnologias
 
 - **Django** 6.x
@@ -26,8 +38,9 @@ financeiro/
 ├── manage.py
 ├── financeiro/          # projeto Django (settings, urls raiz)
 └── core/                 # app principal
-    ├── models.py         # Categoria, Transacao
+    ├── models.py         # Categoria, Transacao (constraints e clean/save)
     ├── managers.py       # TransacaoQuerySet (saldo, do_mes)
+    ├── migrations/       # 0001_initial, 0002 constraints + correção de dados
     ├── services/
     │   └── financeiro_service.py   # saldo_total, saldo_mensal, saldo_por_categoria
     ├── views/
@@ -71,4 +84,4 @@ financeiro/
 
 ## Resumo
 
-Este projeto é um **controle financeiro** em Django: gerencia **categorias** e **transações**, e oferece um **dashboard** com saldo total, saldo do mês e totais por categoria no mês atual.
+Este projeto é um **controle financeiro** em Django: gerencia **categorias** e **transações** com validações e constraints no modelo (valor positivo, tipo válido, tipo igual ao da categoria, data não futura), e oferece um **dashboard** com saldo total, saldo do mês e totais por categoria no mês atual.
